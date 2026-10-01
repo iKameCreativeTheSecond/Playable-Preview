@@ -72,6 +72,12 @@ h1 {
   outline: none;
 }
 
+.dropzone.dropzone-active {
+  border-color: #60a5fa;
+  border-style: solid;
+  background: rgba(59, 130, 246, 0.12);
+}
+
 .dz-icon {
   color: #475569;
   margin-bottom: 0.5rem;

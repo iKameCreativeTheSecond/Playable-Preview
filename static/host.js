@@ -127,6 +127,33 @@
     }
   }
 
+  function shareSingleFile(path, file) {
+    fileMap = new Map([[path, file]]);
+    entryPath = path;
+    startSharing(1);
+  }
+
+  // Assumes fileMap is already populated with relative-path -> File entries.
+  function shareFileMap(fileCount) {
+    const htmlCandidates = [...fileMap.keys()].filter(isHtmlPath);
+    if (htmlCandidates.length === 0) {
+      showError("Không tìm thấy file .html nào trong các file đã chọn.");
+      return false;
+    }
+
+    const defaultEntry = htmlCandidates.find((p) => p.toLowerCase() === "index.html");
+    if (defaultEntry) {
+      entryPath = defaultEntry;
+      startSharing(fileCount);
+    } else if (htmlCandidates.length === 1) {
+      entryPath = htmlCandidates[0];
+      startSharing(fileCount);
+    } else {
+      showEntryPicker(htmlCandidates);
+    }
+    return true;
+  }
+
   dropzone.addEventListener("click", () => folderInput.click());
   dropzone.addEventListener("keydown", (e) => {
     if (e.key === "Enter" || e.key === " ") {
@@ -143,6 +170,106 @@
     fileInput.click();
   });
 
+  ["dragenter", "dragover"].forEach((type) => {
+    dropzone.addEventListener(type, (e) => {
+      e.preventDefault();
+      dropzone.classList.add("dropzone-active");
+    });
+  });
+  ["dragleave", "dragend"].forEach((type) => {
+    dropzone.addEventListener(type, () => {
+      dropzone.classList.remove("dropzone-active");
+    });
+  });
+  // A drop anywhere on the page that misses the dropzone would otherwise
+  // make the browser navigate to/open the dropped file.
+  window.addEventListener("dragover", (e) => e.preventDefault());
+  window.addEventListener("drop", (e) => e.preventDefault());
+
+  dropzone.addEventListener("drop", async (e) => {
+    e.preventDefault();
+    dropzone.classList.remove("dropzone-active");
+    clearError();
+
+    let collected;
+    try {
+      collected = await collectDroppedEntries(e.dataTransfer);
+    } catch (err) {
+      showError("Không đọc được file/thư mục vừa thả.");
+      return;
+    }
+
+    if (collected.length === 0) {
+      showError("Không có file nào được thả vào.");
+      return;
+    }
+
+    if (collected.length === 1) {
+      shareSingleFile(collected[0][0], collected[0][1]);
+      return;
+    }
+
+    fileMap = new Map(collected);
+    shareFileMap(collected.length);
+  });
+
+  function readDirectoryEntries(dirReader) {
+    return new Promise((resolve, reject) => {
+      const all = [];
+      const readBatch = () => {
+        dirReader.readEntries((entries) => {
+          if (entries.length === 0) {
+            resolve(all);
+          } else {
+            all.push(...entries);
+            readBatch();
+          }
+        }, reject);
+      };
+      readBatch();
+    });
+  }
+
+  function collectEntryFiles(entry, basePath, out) {
+    if (entry.isFile) {
+      return new Promise((resolve, reject) => {
+        entry.file((file) => {
+          out.push([basePath + entry.name, file]);
+          resolve();
+        }, reject);
+      });
+    }
+    if (entry.isDirectory) {
+      return readDirectoryEntries(entry.createReader()).then((children) =>
+        Promise.all(children.map((child) => collectEntryFiles(child, basePath + entry.name + "/", out)))
+      );
+    }
+    return Promise.resolve();
+  }
+
+  async function collectDroppedEntries(dataTransfer) {
+    const items = dataTransfer.items;
+    if (!items || !items.length || !items[0].webkitGetAsEntry) {
+      // Fallback for browsers without the entry API: flat files only.
+      return Array.from(dataTransfer.files).map((file) => [file.name, file]);
+    }
+
+    const entries = Array.from(items)
+      .filter((item) => item.kind === "file")
+      .map((item) => item.webkitGetAsEntry())
+      .filter(Boolean);
+
+    const out = [];
+    if (entries.length === 1 && entries[0].isDirectory) {
+      // Strip the top-level folder name, matching the folder-picker behavior.
+      const children = await readDirectoryEntries(entries[0].createReader());
+      await Promise.all(children.map((child) => collectEntryFiles(child, "", out)));
+    } else {
+      await Promise.all(entries.map((entry) => collectEntryFiles(entry, "", out)));
+    }
+    return out;
+  }
+
   folderInput.addEventListener("change", () => {
     const files = Array.from(folderInput.files);
     if (files.length === 0) return;
@@ -156,22 +283,8 @@
       fileMap.set(rel, file);
     }
 
-    const htmlCandidates = [...fileMap.keys()].filter(isHtmlPath);
-    if (htmlCandidates.length === 0) {
-      showError("Không tìm thấy file .html nào trong thư mục đã chọn.");
+    if (!shareFileMap(files.length)) {
       folderInput.value = "";
-      return;
-    }
-
-    const defaultEntry = htmlCandidates.find((p) => p.toLowerCase() === "index.html");
-    if (defaultEntry) {
-      entryPath = defaultEntry;
-      startSharing(files.length);
-    } else if (htmlCandidates.length === 1) {
-      entryPath = htmlCandidates[0];
-      startSharing(files.length);
-    } else {
-      showEntryPicker(htmlCandidates);
     }
   });
 
@@ -187,10 +300,7 @@
   fileInput.addEventListener("change", () => {
     const file = fileInput.files[0];
     if (!file) return;
-
-    fileMap = new Map([[file.name, file]]);
-    entryPath = file.name;
-    startSharing(1);
+    shareSingleFile(file.name, file);
   });
 
   function startSharing(fileCount) {
