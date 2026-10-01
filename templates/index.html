@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Playable Preview Relay</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <main class="card">
+    <div class="brand">
+      <div class="brand-icon">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+      </div>
+      <div>
+        <h1>Playable Preview</h1>
+        <p class="subtitle">Chia sẻ trực tiếp từ máy bạn — không upload lên server</p>
+      </div>
+    </div>
+
+    <input type="file" id="folderInput" webkitdirectory directory multiple hidden>
+    <input type="file" id="fileInput" accept=".html,.htm" hidden>
+
+    <div id="dropzone" class="dropzone" tabindex="0" role="button">
+      <svg class="dz-icon" viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M3 7.5a2 2 0 0 1 2-2h4.17a1 1 0 0 1 .7.3L11.5 7.5H19a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-9Z" stroke-linejoin="round"/>
+      </svg>
+      <p class="dz-title">Chưa chọn gì để chia sẻ</p>
+      <p class="dz-hint">Chọn cả thư mục playable, hoặc chỉ 1 file HTML — không bắt buộc tên <code>index.html</code></p>
+      <button id="pickBtn" class="btn btn-primary" type="button">Chọn thư mục</button>
+      <button id="pickFileBtn" class="btn btn-link" type="button">...hoặc chọn 1 file HTML</button>
+    </div>
+
+    <div id="entryPicker" class="entry-picker" hidden>
+      <p class="dz-title">Chọn file chính</p>
+      <p class="dz-hint">Thư mục có nhiều file .html — chọn file sẽ mở khi ai đó bấm vào link</p>
+      <select id="entrySelect"></select>
+      <div class="entry-actions">
+        <button id="entryConfirmBtn" class="btn btn-primary" type="button">Bắt đầu chia sẻ</button>
+        <button id="entryCancelBtn" class="btn btn-icon" type="button">Huỷ</button>
+      </div>
+    </div>
+
+    <div id="sharingPanel" class="sharing-panel" hidden>
+      <div class="status-row">
+        <span class="dot"></span>
+        <span id="statusText">Đang kết nối...</span>
+        <span id="fileCount" class="badge" hidden></span>
+      </div>
+
+      <div id="linkRow" class="link-group" hidden>
+        <label class="field-label" for="shareLink">Link chia sẻ</label>
+        <div class="link-row">
+          <input type="text" id="shareLink" readonly>
+          <button id="copyBtn" class="btn btn-icon" title="Copy link" type="button">
+            <svg class="icon-copy" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="9" y="9" width="12" height="12" rx="2"/>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+            </svg>
+            <svg class="icon-check" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" hidden>
+              <path d="M20 6 9 17l-5-5"/>
+            </svg>
+          </button>
+        </div>
+
+        <div class="qr-wrap">
+          <img id="qrImage" class="qr-image" alt="QR code link chia sẻ">
+          <span class="qr-caption">Quét để mở trên điện thoại</span>
+        </div>
+      </div>
+
+      <button id="stopBtn" class="btn btn-danger" type="button">Dừng chia sẻ</button>
+    </div>
+
+    <p id="errorMsg" class="error" hidden></p>
+
+    <p class="warn">
+      Link chỉ hoạt động khi tab này còn mở. Đóng tab hoặc tắt máy sẽ khiến link
+      ngừng hoạt động cho đến khi bạn chia sẻ lại.
+    </p>
+  </main>
+
+  <script src="{{ url_for('static', filename='host.js') }}"></script>
+</body>
+</html>
